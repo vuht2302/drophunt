@@ -53,60 +53,42 @@ const AirdropList = () => {
   useEffect(() => {
     const fetchAirdropData = async () => {
       try {
-        // Using Uniswap API to get top pools and tokens
-        // Updated to use a more reliable endpoint for Uniswap data
+        // Using CoinGecko API to get top tokens
         const response = await axios.get(
-          'https://api.uniswap.org/v1/pools/top', {
+          'https://api.coingecko.com/api/v3/coins/markets', {
             params: {
-              chain: 'ethereum',
-              limit: 8,
-              period: '24h'
+              vs_currency: 'usd',
+              order: 'market_cap_desc',
+              per_page: 8,
+              page: 1,
+              sparkline: true,
+              ids: 'bitcoin,ethereum,solana,cardano,pi-network',
+              price_change_percentage: '24h,7d'
             },
             headers: {
-              'Accept': 'application/json'
+              'x-cg-demo-api-key': 'CG-YCwEAW3BGqLh6oZKeZyE4SRH'
             }
           }
         );
 
-        if (!response.data || !response.data.data) {
-          throw new Error('Invalid response format from Uniswap API');
+        if (!response.data || !Array.isArray(response.data)) {
+          throw new Error('Invalid response format from CoinGecko API');
         }
 
-        const pools = response.data.data;
+        const tokens = response.data;
         
-        // Transform the pool data to match our airdrop format
-        const transformedData = pools.map(pool => {
-          // Extract token information from pool
-          const token0 = pool.token0 || { symbol: 'UNI' };
-          const token1 = pool.token1 || { symbol: 'ETH' };
-          
-          // Generate random requirements based on tokens
-          const requirementSets = [
-            ['Hold ' + token0.symbol, 'Active Wallet', 'Trade Volume'],
-            ['Bridge Assets', 'Multiple Chains Usage', 'Early User'],
-            ['Provide Liquidity', 'Governance Participation', 'Hold ' + token1.symbol],
-            ['Trade on DEX', 'Stake Tokens', 'Community Member']
-          ];
-          
-          // Randomly select a set of requirements
-          const randomReqIndex = Math.floor(Math.random() * requirementSets.length);
-          
-          // Generate random end date between 1-3 months from now
-          const endDate = new Date();
-          endDate.setMonth(endDate.getMonth() + Math.floor(Math.random() * 3) + 1);
-          const formattedEndDate = endDate.toISOString().split('T')[0];
-          
-          // Use volume or tvl for estimated value calculation
-          const volume = parseFloat(pool.volumeUSD || '1000000');
-          const minValue = Math.floor((volume * 0.00001) / 100) * 100;
-          const maxValue = minValue * 10;
-          
+        // Transform the token data to match our airdrop format
+        const transformedData = tokens.map(token => {
           return {
-            name: `${token0.symbol}-${token1.symbol} Pool`,
-            description: `Uniswap V4 liquidity pool for ${token0.symbol} and ${token1.symbol}`,
-            requirements: requirementSets[randomReqIndex],
-            estimatedValue: `$${minValue}-$${maxValue}`,
-            endDate: formattedEndDate,
+            name: token.name,
+            symbol: token.symbol.toUpperCase(),
+            current_price: token.current_price,
+            price_change_24h: token.price_change_percentage_24h,
+            price_change_7d: token.price_change_percentage_7d,
+            market_cap: token.market_cap,
+            total_volume: token.total_volume,
+            sparkline: token.sparkline_in_7d?.price || [],
+            image: token.image,
             status: Math.random() > 0.5 ? 'Active' : 'Upcoming'
           };
         });
@@ -131,6 +113,9 @@ const AirdropList = () => {
                 order: 'market_cap_desc',
                 per_page: 8,
                 page: 1
+              },
+              headers: {
+                'x-cg-demo-api-key': 'CG-YCwEAW3BGqLh6oZKeZyE4SRH'
               }
             }
           );
@@ -169,7 +154,7 @@ const AirdropList = () => {
             });
             
             setAirdropData(transformedData);
-            setError('Primary API failed. Using alternative data source.');
+            setError(null);
           } else {
             throw new Error('Alternative API also failed');
           }
@@ -204,7 +189,9 @@ const AirdropList = () => {
           {airdropData.map((airdrop) => (
             <Grid item xs={12} sm={6} md={4} key={airdrop.name}>
               <Card
+                onClick={() => navigate(`/coins/${airdrop.name.toLowerCase()}`)} 
                 sx={{
+                  cursor: 'pointer',
                   height: '100%',
                   display: 'flex',
                   flexDirection: 'column',
@@ -221,30 +208,6 @@ const AirdropList = () => {
                   }
                 }}
               >
-                {/* New ribbon */}
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: 0,
-                    right: 0,
-                    bgcolor: '#10b981',
-                    color: 'white',
-                    py: 0.5,
-                    px: 1.5,
-                    fontWeight: 'bold',
-                    fontSize: '0.75rem',
-                    clipPath: 'polygon(100% 0, 100% 100%, 0 100%)',
-                    width: 80,
-                    height: 80,
-                    display: 'flex',
-                    alignItems: 'flex-end',
-                    justifyContent: 'flex-end',
-                    zIndex: 1
-                  }}
-                >
-                  New
-                </Box>
-                
                 <Box 
                   sx={{
                     p: 2, 
@@ -255,8 +218,8 @@ const AirdropList = () => {
                   }}
                 >
                   <Avatar
-                    src="/logo192.png"
-                    alt="Project Logo"
+                    src={airdrop.image}
+                    alt={airdrop.name}
                     sx={{
                       width: 48,
                       height: 48,
@@ -267,40 +230,64 @@ const AirdropList = () => {
                   <Box>
                     <Box display="flex" alignItems="center">
                       <Typography variant="h6" component="h3" sx={{ fontWeight: 800, color: 'white' }}>
-                        {airdrop.name}
+                        {airdrop.symbol}
                       </Typography>
                       <VerifiedIcon sx={{ ml: 1, color: '#3b82f6', fontSize: 18 }} />
                     </Box>
                     
-                    <Box display="flex" gap={1} mt={0.5}>
-                      <IconButton size="small" sx={{ bgcolor: 'rgba(255,255,255,0.1)', p: 0.5 }}>
-                        <Box component="img" src="/x-logo.png" alt="X" width={16} height={16} />
-                      </IconButton>
-                      <IconButton size="small" sx={{ bgcolor: 'rgba(255,255,255,0.1)', p: 0.5 }}>
-                        <Box component="span" sx={{ fontSize: '14px', fontWeight: 'bold' }}>$</Box>
-                      </IconButton>
-                    </Box>
+                    <Typography variant="body2" color="rgba(255,255,255,0.7)">
+                      {airdrop.name}
+                    </Typography>
                   </Box>
                 </Box>
                 
                 <CardContent sx={{ flexGrow: 1, p: 2 }}>
-                  <Box display="flex" flexDirection="column" gap={1.5}>
+                  <Box display="flex" flexDirection="column" gap={2}>
                     <Box>
-                      <Typography variant="body2" color="rgba(255,255,255,0.7)" sx={{ fontWeight: 500 }}>
-                        $PROMPT 💎
+                      <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                        ${airdrop.current_price?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} 
                       </Typography>
-                      <Typography variant="body2" color="rgba(255,255,255,0.7)" sx={{ fontWeight: 500 }}>
-                        2% of Supply 🔥
-                      </Typography>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Typography 
+                          variant="body2" 
+                          color={airdrop.price_change_24h > 0 ? '#4ade80' : '#f43f5e'}
+                          sx={{ fontWeight: 500 }}
+                        >
+                          {airdrop.price_change_24h > 0 ? '↑' : '↓'} {Math.abs(airdrop.price_change_24h).toFixed(1)}%
+                        </Typography>
+                        <Typography variant="body2" color="rgba(255,255,255,0.5)">
+                          24h
+                        </Typography>
+                      </Box>
                     </Box>
                     
                     <Box>
-                      <Typography variant="body2" color="rgba(255,255,255,0.7)" sx={{ fontWeight: 500 }}>
-                        auto. AI Agents 🤖
+                      <Typography variant="body2" color="rgba(255,255,255,0.7)" sx={{ mb: 0.5 }}>
+                        Volume 24h: ${(airdrop.total_volume || 0).toLocaleString()}
                       </Typography>
-                      <Typography variant="body2" color="rgba(255,255,255,0.7)" sx={{ fontWeight: 500 }}>
-                        Machine intelligence
+                      <Typography variant="body2" color="rgba(255,255,255,0.7)">
+                        Market Cap: ${(airdrop.market_cap || 0).toLocaleString()}
                       </Typography>
+                    </Box>
+                    
+                    <Box sx={{ height: 60, width: '100%' }}>
+                      {airdrop.sparkline && airdrop.sparkline.length > 0 && (
+                        <svg
+                          viewBox="0 0 100 30"
+                          width="100%"
+                          height="100%"
+                          style={{ display: 'block' }}
+                        >
+                          <path
+                            d={`M ${airdrop.sparkline.map((price, i) => 
+                              `${(i / (airdrop.sparkline.length - 1)) * 100} ${30 - ((price - Math.min(...airdrop.sparkline)) / (Math.max(...airdrop.sparkline) - Math.min(...airdrop.sparkline))) * 30}`
+                            ).join(' L ')}`}
+                            fill="none"
+                            stroke={airdrop.price_change_7d > 0 ? '#4ade80' : '#f43f5e'}
+                            strokeWidth="1"
+                          />
+                        </svg>
+                      )}
                     </Box>
                   </Box>
                 </CardContent>
@@ -319,7 +306,9 @@ const AirdropList = () => {
         {airdropData.map((airdrop) => (
           <Grid item xs={12} sm={6} md={4} key={airdrop.name}>
             <Card
+              onClick={() => navigate(`/coins/${airdrop.name.toLowerCase()}`)} 
               sx={{
+                cursor: 'pointer',
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
@@ -419,6 +408,26 @@ const AirdropList = () => {
                   </Box>
                 </Box>
               </CardContent>
+              <CardActions>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="primary"
+                  endIcon={<LaunchIcon />}
+                  onClick={() => navigate(`/airdrops?name=${airdrop.name}`)}
+                  sx={{ mr: 1 }}
+                >
+                  View Airdrop
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="primary"
+                  onClick={() => navigate(`/coins/${airdrop.name.toLowerCase()}`)}
+                >
+                  View Details
+                </Button>
+              </CardActions>
             </Card>
           </Grid>
         ))}

@@ -8,10 +8,9 @@ import {
   CardMedia,
   CardContent,
   IconButton,
-  Divider,
+
   Button
 } from '@mui/material';
-import { Link } from 'react-router-dom';
 import TwitterIcon from '@mui/icons-material/Twitter';
 import TelegramIcon from '@mui/icons-material/Telegram';
 import FacebookIcon from '@mui/icons-material/Facebook';

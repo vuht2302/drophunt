@@ -7,6 +7,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import AirdropPage from './pages/AirdropPage';
 import BlogPage from './pages/BlogPage';
+import CoinDetailPage from './pages/CoinDetailPage';
 import HeroSection from './components/HeroSection';
 import TrustedBrands from './components/TrustedBrands';
 import AirdropCategories from './components/AirdropCategories';
@@ -49,6 +50,7 @@ function App() {
           <Routes>
             <Route path="/airdrops" element={<AirdropPage />} />
             <Route path="/blog" element={<BlogPage />} />
+            <Route path="/coins/:id" element={<CoinDetailPage />} />
             <Route path="/" element={
               <>
                 <Header mode={mode} toggleTheme={toggleTheme} />
